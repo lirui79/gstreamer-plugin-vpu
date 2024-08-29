@@ -115,12 +115,17 @@ static gboolean gst_amsh264_dec_close(GstAMSDec *dec) {
 
 static gint     gst_amsh264_dec_predecode(GstAMSDec *dec, guint8 *data, guint size) {
   GstAMSH264Dec *self =  GST_AMSH264_DEC(dec); 
-  GstH264NalUnit nalu;
+  GstH264NalUnit  nalu;
+  GstH264SliceHdr header;
   GstH264ParserResult pres;
   GST_DEBUG_OBJECT (self, "predecode");
   pres = gst_h264_parser_identify_nalu (self->parser, data, 0, size, &nalu);
   if (pres == GST_H264_PARSER_NO_NAL_END)
      pres = GST_H264_PARSER_OK;
+
+  if (pres != GST_H264_PARSER_OK) {
+      return -1;
+  }
 
   switch (nalu.type) {
     case GST_H264_NAL_SPS:
@@ -129,23 +134,34 @@ static gint     gst_amsh264_dec_predecode(GstAMSDec *dec, guint8 *data, guint si
     case GST_H264_NAL_SEI:
          memcpy(dec->header.data + dec->header.size, data, size);
          dec->header.size += size;
-         return -2;
+         return -3;
     break;
     case GST_H264_NAL_AU_DELIMITER:
-         return -1;
+         return -2;
     break;
     case GST_H264_NAL_SLICE_IDR:
          return  0;
+    case GST_H264_NAL_SLICE:
+    case GST_H264_NAL_SLICE_DPA:
+    case GST_H264_NAL_SLICE_DPB:
+    case GST_H264_NAL_SLICE_DPC:
+    case GST_H264_NAL_SLICE_EXT:
+    /*
+         pres = gst_h264_parser_parse_slice_hdr (self->parser, &nalu,  &header, TRUE, TRUE);
+         if (GST_H264_IS_I_SLICE(&header)) {//             printf("(%s:%s:%d)\n", __FILE__,__FUNCTION__,__LINE__);
+             return 0;
+         }
+         break;*/
     default:
         break;
   }
 
   if (dec->skipframes == 0) {
-      if (nalu.type != GST_H264_NAL_SLICE_IDR) {
-          return -3;
+      if (nalu.idr_pic_flag == 0) {
+          return -4;
       }
   }
-  return 1;
+  return 2;
 }
 
 static gboolean

@@ -20,7 +20,7 @@ plugin_init (GstPlugin * plugin)
 
 //  ret |= GST_ELEMENT_REGISTER (amsh264enc, plugin);
 
-//  ret |= GST_ELEMENT_REGISTER (amsh265dec, plugin);
+  ret |= GST_ELEMENT_REGISTER (amsh265dec, plugin);
 
 //  ret |= GST_ELEMENT_REGISTER (amsh265enc, plugin);
 

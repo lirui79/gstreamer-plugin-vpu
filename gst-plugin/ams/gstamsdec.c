@@ -350,12 +350,14 @@ gst_ams_dec_set_format (GstVideoDecoder * decoder, GstVideoCodecState * state)
 static GstFlowReturn gst_ams_dec_finish (GstVideoDecoder * decoder) {
     GstAMSDec *dec = GST_AMS_DEC (decoder);
     GST_DEBUG_OBJECT (dec, "finish");
+    //printf("(%s:%s:%d) finish\n", __FILE__,__FUNCTION__,__LINE__);
     return gst_ams_dec_getframes(decoder, 1);
 }
 
 static GstFlowReturn gst_ams_dec_drain (GstVideoDecoder * decoder) {
     GstAMSDec *dec = GST_AMS_DEC (decoder);
     GST_DEBUG_OBJECT (dec, "drain");
+    //printf("(%s:%s:%d) drain\n", __FILE__,__FUNCTION__,__LINE__);
     if (dec->output_state == NULL) {
         return GST_FLOW_OK;
     }
@@ -366,6 +368,7 @@ static gboolean
 gst_ams_dec_flush (GstVideoDecoder * decoder) {
     GstAMSDec *dec = GST_AMS_DEC (decoder);
     GST_DEBUG_OBJECT (dec, "flush");
+    //printf("(%s:%s:%d) flush\n", __FILE__,__FUNCTION__,__LINE__);
     if (gst_ams_dec_getframes(decoder, 1) == GST_FLOW_OK) 
       return TRUE;
     return FALSE;
@@ -502,7 +505,7 @@ gst_ams_dec_handle_frame (GstVideoDecoder * decoder, GstVideoCodecFrame * frame)
     }
     ++retry_count;
     /* Magic number 1ms */
-    g_usleep (1000);
+    g_usleep (5000);
   } while(retCode < 0);
   
   if (preCode == 0) {
@@ -711,14 +714,14 @@ static GstFlowReturn gst_ams_dec_getframes (GstVideoDecoder * decoder, int finis
   ams_frame_t* vpu_frame = NULL;
   GstVideoCodecFrame * frame = NULL;
   guint retry_count = 0;
-  const guint retry_threshold = 100;
+  const guint retry_threshold = 2000;
 
   if (finished) {
     ams_packet_t packet;
     int retCode = 0;
     packet.data = 0;
     packet.size = 0;
-
+    //printf("(%s:%s:%d)\n", __FILE__,__FUNCTION__,__LINE__);
     do {
         gint gotframe = 0;
         retCode = ams_decode_send_packet(dec->decoder, &packet);
@@ -740,7 +743,7 @@ static GstFlowReturn gst_ams_dec_getframes (GstVideoDecoder * decoder, int finis
         }
         ++retry_count;
         /* Magic number 1ms */
-        g_usleep (1000);
+        g_usleep (5000);
     }while(retCode < 0);
   }
 
@@ -759,13 +762,14 @@ static GstFlowReturn gst_ams_dec_getframes (GstVideoDecoder * decoder, int finis
         }
         ++retry_count;
         /* Magic number 1ms */
-        g_usleep (10000);
+        g_usleep (5000);
         continue;
     }
 
     retry_count = 0;
     if (vpu_frame->last_frame_flag) {
       GST_DEBUG_OBJECT (dec, "get last frame, at EOS");
+      //printf("(%s:%s:%d) get last frame, at EOS\n", __FILE__,__FUNCTION__,__LINE__);
       ams_free_frame(vpu_frame);
       return GST_FLOW_OK;
     }
@@ -840,6 +844,7 @@ static GstFlowReturn gst_ams_dec_getframe (GstVideoDecoder * decoder, gint *gotf
     *gotframe = 1;
     if (vpu_frame->last_frame_flag) {
       GST_DEBUG_OBJECT (dec, "get last frame, at EOS");
+      //printf("(%s:%s:%d) get last frame, at EOS\n", __FILE__,__FUNCTION__,__LINE__);
       ams_free_frame(vpu_frame);
       *gotframe = 2;
       return GST_FLOW_EOS;// get last frame EOS

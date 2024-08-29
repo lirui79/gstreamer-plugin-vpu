@@ -105,59 +105,15 @@ sigint_handler (gpointer data)
 }
 #endif
 
-int
-main (int argc, char *argv[])
-{
-  GMainLoop *loop;
-  GstElement *source;
-  GstElement *parse;
-  GstElement *decoder;
-  GstElement *sink;
-  GstElement *pipeline;
-  GstBus *bus;
-  guint bus_watch_id;
-  GError *error = NULL;
-  
-  /* Initialize GStreamer */
-  gst_init (&argc, &argv);
-
-  loop = g_main_loop_new (NULL, FALSE);
-  pipeline = gst_parse_launch ("filesrc name=source ! parsebin name=parse ! amsh264dec name=decoder ! filesink name=sink", &error);
-  if (error) {
-    gst_printerrln ("Could not construct pipeline, error: %s",
-        error->message);
-    g_main_loop_unref (loop);
-    gst_deinit ();
-    return 1;
-  }
-
-  source = gst_bin_get_by_name (GST_BIN (pipeline), "source");
-  if (source == NULL) {
-    g_printerr ("Could not create source element\n");
-    goto ERROR;
-  }
-
-  parse = gst_bin_get_by_name (GST_BIN (pipeline), "parse");
-
-  if (parse == NULL) {
-    g_printerr ("Could not create parse element\n");
-    goto ERROR;
-  }
-
-  decoder = gst_bin_get_by_name (GST_BIN (pipeline), "decoder");
-  if (decoder == NULL) {
-    g_printerr ("Could not create decoder element, please check your "
-        "GStreamer plugin path.\n");
-    goto ERROR;
-  }
-
-  sink = gst_bin_get_by_name (GST_BIN (pipeline), "sink");
-  if (sink == NULL) {
-    g_printerr ("Could not create sink element.\n");
-    goto ERROR;
-  }
-
-  {
+GstElement *init_pipeline(int argc, char *argv[]) {
+    GstElement *source;
+    GstElement *parse;
+    GstElement *decoder;
+    GstElement *sink;
+    GstElement *pipeline;
+    GError *error = NULL;
+    const char *inputfile = NULL, *outputfile = NULL;
+    gint skip_frame = -1, board_idx = -1;
     const char* optstr = "hkb:i:o:s:";
     guint64 val = 0;
     gint opt;
@@ -165,37 +121,114 @@ main (int argc, char *argv[])
         switch (opt) {
         case 'h':
             usage(argv[0]);
-            return 0;
+            return NULL;
         case 'k':// 0x01
             val |= (0x1);
-            g_object_set (G_OBJECT (decoder), "skip-frames", 0, NULL);
+            //g_object_set (G_OBJECT (decoder), "skip-frames", 0, NULL);
+            skip_frame = 0;
             break;
         case 'b':// 0x02
             val |= (0x1 << 1);
-            g_object_set (G_OBJECT (decoder), "board-idx", 0, NULL);
+            //g_object_set (G_OBJECT (decoder), "board-idx", atoi(optarg), NULL);
+            board_idx = atoi(optarg);
             break;
         case 'i':// 0x04
             val |= (0x1 << 2);
-            g_object_set (G_OBJECT (source), "location", optarg, NULL);
+            //g_object_set (G_OBJECT (source), "location", optarg, NULL);
+            inputfile = optarg;
             break;
         case 'o':// 0x08
             val |= (0x1 << 3);
-            g_object_set (G_OBJECT (sink), "location", optarg, NULL);
+            //g_object_set (G_OBJECT (sink), "location", optarg, NULL);
+            outputfile = optarg;
             break;
         case 's':// 0x20
             val |= (0x1 << 4);
-            g_object_set (G_OBJECT (decoder), "skip-frames", atoi(optarg), NULL);
+            //g_object_set (G_OBJECT (decoder), "skip-frames", atoi(optarg), NULL);
+            skip_frame = atoi(optarg);
             break;
         default:
             usage(argv[0]);
-            goto ERROR;
+            return NULL;
         }
     }
 
-    if ((val & 0xC) != 0xC) {
+    if ((val & 0x04) != 0x04) {
         usage(argv[0]);
-        goto ERROR;
+        return NULL;
     }
+
+    if (outputfile == NULL) {
+        pipeline = gst_parse_launch ("filesrc name=source ! parsebin name=parse ! amsh264dec name=decoder ! fakesink name=sink", &error);
+    } else {
+        pipeline = gst_parse_launch ("filesrc name=source ! parsebin name=parse ! amsh264dec name=decoder ! filesink name=sink", &error);
+    }
+
+    if (error) {
+        gst_printerrln ("Could not construct pipeline, error: %s", error->message);
+        return NULL;
+    }
+
+    source = gst_bin_get_by_name (GST_BIN (pipeline), "source");
+    if (source == NULL) {
+        g_printerr ("Could not create source element\n");
+        gst_object_unref (GST_OBJECT (pipeline));
+        return NULL;
+    }
+
+    parse = gst_bin_get_by_name (GST_BIN (pipeline), "parse");
+
+    if (parse == NULL) {
+        g_printerr ("Could not create parse element\n");
+        gst_object_unref (GST_OBJECT (pipeline));
+        return NULL;
+    }
+
+    decoder = gst_bin_get_by_name (GST_BIN (pipeline), "decoder");
+    if (decoder == NULL) {
+        g_printerr ("Could not create decoder element, please check your "
+            "GStreamer plugin path.\n");
+        gst_object_unref (GST_OBJECT (pipeline));
+        return NULL;
+    }
+
+    sink = gst_bin_get_by_name (GST_BIN (pipeline), "sink");
+    if (sink == NULL) {
+        g_printerr ("Could not create sink element.\n");
+        gst_object_unref (GST_OBJECT (pipeline));
+        return NULL;
+    }
+
+    g_object_set (G_OBJECT (source), "location", inputfile, NULL);
+    if (outputfile != NULL) {
+        g_object_set (G_OBJECT (sink), "location", outputfile, NULL);
+    }
+
+    if (board_idx >= 0) {
+        g_object_set (G_OBJECT (decoder), "board-idx", board_idx, NULL);
+    }
+
+    if (skip_frame >= 0) {
+        g_object_set (G_OBJECT (decoder), "skip-frames", skip_frame, NULL);
+    }
+    return pipeline;
+}
+
+int main (int argc, char *argv[]) {
+  GMainLoop *loop;
+  GstElement *pipeline;
+  GstBus *bus;
+  guint bus_watch_id;
+/* Initialize GStreamer */
+  gst_init (&argc, &argv);
+  loop = g_main_loop_new (NULL, FALSE);
+
+  pipeline = init_pipeline(argc, argv);
+
+  if (pipeline == NULL) {
+    g_main_loop_unref (loop);
+    gst_deinit ();
+    return 1;
   }
 
   bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
@@ -212,7 +245,6 @@ main (int argc, char *argv[])
   g_source_remove (bus_watch_id);
   gst_bus_remove_watch (bus);
   gst_object_unref (bus);
-ERROR:
   gst_object_unref (GST_OBJECT (pipeline));
   g_main_loop_unref (loop);
   gst_deinit ();

@@ -14,13 +14,10 @@ configure_file(output : 'config.h', configuration : cdata)
 # Plugin ams
 ams_sources = [
   'gstamsh264dec.c',
-#  'gstvp8enc.c',
-#  'gstvp8utils.c',
-#  'gstvp9dec.c',
+  'gstamsh265dec.c',
 #  'gstvp9enc.c',
   'gstamsdec.c',
 #  'gstvpxenc.c',
-#  'gstvpxelement.c',
   'plugin.c',
 ]
 

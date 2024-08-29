@@ -46,3 +46,8 @@ demo test:
 
   SKIP FRAME  is 30
  ./build/gst-app/ams/ams-app -b 0 -i /home/stone/we_8bit_1920x1080.mp4 -o /home/stone/3.yuv -s 30
+
+
+not save yuv file
+   gst-launch-1.0 filesrc location=/home/stone/we_8bit_1920x1080.mp4 ! parsebin ! amsh264dec ! fakesink
+   ./build/gst-app/ams/ams-app -b 0 -i /home/stone/1080.h264
