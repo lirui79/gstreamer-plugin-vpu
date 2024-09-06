@@ -159,6 +159,7 @@ gst_ams_dec_init (GstAMSDec * dec)
 {
     GstVideoDecoder *decoder = GST_VIDEO_DECODER (dec);
     GST_DEBUG_OBJECT (dec, "init");
+    GST_AMS_LOG("init");
     dec->decoder      = ams_create_codec_context0(AMS_CODEC_ID_H264);
     dec->decoder->board_id = -1;
     dec->decoder->coreidx  = -1;
@@ -192,6 +193,7 @@ gst_ams_dec_set_property (GObject * object, guint prop_id,
   dec = GST_AMS_DEC (object);
 
   GST_DEBUG_OBJECT (object, "set_property");
+  GST_AMS_LOG("set_property");
 
   switch (prop_id) {
     case PROP_VPU_BOARD_IDX:
@@ -237,6 +239,7 @@ gst_ams_dec_get_property (GObject * object, guint prop_id, GValue * value,
   dec = GST_AMS_DEC (object);
 
   GST_DEBUG_OBJECT (object, "get_property");
+  GST_AMS_LOG("get_property");
 
   switch (prop_id) {
     case PROP_VPU_BOARD_IDX:
@@ -279,6 +282,7 @@ gst_ams_dec_start (GstVideoDecoder * decoder)
   GstAMSDecClass *klass = GST_AMS_DEC_GET_CLASS (dec);
 
   GST_DEBUG_OBJECT (dec, "start");
+  GST_AMS_LOG("start");
   if (dec->header.data == NULL) {
       dec->header.data = g_slice_alloc(dec->header.capacity);
   }
@@ -296,6 +300,7 @@ gst_ams_dec_stop (GstVideoDecoder * base_video_decoder)
   GstAMSDecClass *klass = GST_AMS_DEC_GET_CLASS (dec);
 
   GST_DEBUG_OBJECT (dec, "stop");
+  GST_AMS_LOG("stop");
 
   if (dec->input_state) {
     gst_video_codec_state_unref (dec->input_state);
@@ -327,37 +332,39 @@ gst_ams_dec_stop (GstVideoDecoder * base_video_decoder)
 static gboolean
 gst_ams_dec_set_format (GstVideoDecoder * decoder, GstVideoCodecState * state)
 {
-  GstAMSDec *dec = GST_AMS_DEC (decoder);
+    GstAMSDec *dec = GST_AMS_DEC (decoder);
+    gchar *debug_caps = NULL;
 
-  GST_DEBUG_OBJECT (dec, "set_format");
+    debug_caps = gst_caps_to_string (state->caps);
+    GST_DEBUG_OBJECT (dec, "set_format, input caps:%s", debug_caps);
+    GST_AMS_LOG("set_format input caps:%s", debug_caps);
+    g_free (debug_caps);
 
-  GST_DEBUG_OBJECT (dec, "input caps: %" GST_PTR_FORMAT, state->caps);
+    if (dec->input_state) {
+        gst_video_codec_state_unref (dec->input_state);
+        dec->input_state = NULL;
+    }
+    dec->input_state = gst_video_codec_state_ref (state);
 
-  if (dec->input_state) {
-    gst_video_codec_state_unref (dec->input_state);
-    dec->input_state = NULL;
-  }
-  dec->input_state = gst_video_codec_state_ref (state);
+    if (dec->output_state) {
+        gst_video_codec_state_unref (dec->output_state);
+        dec->output_state = NULL;
+    }
 
-  if (dec->output_state) {
-    gst_video_codec_state_unref (dec->output_state);
-    dec->output_state = NULL;
-  }
-
-  return TRUE;
+    return TRUE;
 }
   
 static GstFlowReturn gst_ams_dec_finish (GstVideoDecoder * decoder) {
     GstAMSDec *dec = GST_AMS_DEC (decoder);
     GST_DEBUG_OBJECT (dec, "finish");
-    //printf("(%s:%s:%d) finish\n", __FILE__,__FUNCTION__,__LINE__);
+    GST_AMS_LOG("finish");
     return gst_ams_dec_getframes(decoder, 1);
 }
 
 static GstFlowReturn gst_ams_dec_drain (GstVideoDecoder * decoder) {
     GstAMSDec *dec = GST_AMS_DEC (decoder);
     GST_DEBUG_OBJECT (dec, "drain");
-    //printf("(%s:%s:%d) drain\n", __FILE__,__FUNCTION__,__LINE__);
+    GST_AMS_LOG("drain");
     if (dec->output_state == NULL) {
         return GST_FLOW_OK;
     }
@@ -368,7 +375,7 @@ static gboolean
 gst_ams_dec_flush (GstVideoDecoder * decoder) {
     GstAMSDec *dec = GST_AMS_DEC (decoder);
     GST_DEBUG_OBJECT (dec, "flush");
-    //printf("(%s:%s:%d) flush\n", __FILE__,__FUNCTION__,__LINE__);
+    GST_AMS_LOG("flush");
     if (gst_ams_dec_getframes(decoder, 1) == GST_FLOW_OK) 
       return TRUE;
     return FALSE;
@@ -437,6 +444,7 @@ gst_ams_dec_handle_frame (GstVideoDecoder * decoder, GstVideoCodecFrame * frame)
   guint retry_count = 0;
   const guint retry_threshold = 1000;
   GST_DEBUG_OBJECT (dec, "handle_frame");
+//  GST_AMS_LOG("handle_frame");
 
   if (!gst_buffer_map (frame->input_buffer, &minfo, GST_MAP_READ)) {
         GST_ERROR_OBJECT (decoder, "Failed to map input buffer");
@@ -592,7 +600,7 @@ gst_ams_dec_decide_allocation (GstVideoDecoder * decoder, GstQuery * query) {
   GstAMSDec *dec = GST_AMS_DEC (decoder);
   GstBufferPool *pool = NULL;
   GstStructure *config = NULL;
-
+  GST_AMS_LOG("decide_allocation");
   GST_DEBUG_OBJECT (dec, "decide_allocation");
   if (!GST_VIDEO_DECODER_CLASS (parent_class)->decide_allocation (decoder, query))
     return FALSE;
@@ -721,7 +729,7 @@ static GstFlowReturn gst_ams_dec_getframes (GstVideoDecoder * decoder, int finis
     int retCode = 0;
     packet.data = 0;
     packet.size = 0;
-    //printf("(%s:%s:%d)\n", __FILE__,__FUNCTION__,__LINE__);
+   //  GST_AMS_LOG("dec_getframes");
     do {
         gint gotframe = 0;
         retCode = ams_decode_send_packet(dec->decoder, &packet);
@@ -742,7 +750,6 @@ static GstFlowReturn gst_ams_dec_getframes (GstVideoDecoder * decoder, int finis
           break;
         }
         ++retry_count;
-        /* Magic number 1ms */
         g_usleep (5000);
     }while(retCode < 0);
   }
@@ -769,7 +776,7 @@ static GstFlowReturn gst_ams_dec_getframes (GstVideoDecoder * decoder, int finis
     retry_count = 0;
     if (vpu_frame->last_frame_flag) {
       GST_DEBUG_OBJECT (dec, "get last frame, at EOS");
-      //printf("(%s:%s:%d) get last frame, at EOS\n", __FILE__,__FUNCTION__,__LINE__);
+      GST_AMS_LOG("get last frame, at EOS");
       ams_free_frame(vpu_frame);
       return GST_FLOW_OK;
     }
@@ -844,7 +851,7 @@ static GstFlowReturn gst_ams_dec_getframe (GstVideoDecoder * decoder, gint *gotf
     *gotframe = 1;
     if (vpu_frame->last_frame_flag) {
       GST_DEBUG_OBJECT (dec, "get last frame, at EOS");
-      //printf("(%s:%s:%d) get last frame, at EOS\n", __FILE__,__FUNCTION__,__LINE__);
+      GST_AMS_LOG("get last frame, at EOS");
       ams_free_frame(vpu_frame);
       *gotframe = 2;
       return GST_FLOW_EOS;// get last frame EOS

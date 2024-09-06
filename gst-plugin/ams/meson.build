@@ -15,9 +15,10 @@ configure_file(output : 'config.h', configuration : cdata)
 ams_sources = [
   'gstamsh264dec.c',
   'gstamsh265dec.c',
-#  'gstvp9enc.c',
+  'gstamsh264enc.c',
+  'gstamsh265enc.c',
   'gstamsdec.c',
-#  'gstvpxenc.c',
+  'gstamsenc.c',
   'plugin.c',
 ]
 

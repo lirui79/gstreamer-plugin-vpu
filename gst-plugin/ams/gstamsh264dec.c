@@ -9,7 +9,6 @@
 #include "gstamselements.h"
 #include "gstamsh264dec.h"
 
-
 #include <gst/video/gstvideometa.h>
 #include <gst/video/gstvideopool.h>
 
@@ -22,7 +21,7 @@ static gboolean gst_amsh264_dec_close(GstAMSDec *dec);
 
 static gint     gst_amsh264_dec_predecode(GstAMSDec *dec, guint8 *data, guint size);
 
-static gboolean amsh264_element_init (GstPlugin * plugin);
+static gboolean amsh264dec_element_init (GstPlugin * plugin);
 
 
 static GstStaticPadTemplate gst_amsh264_dec_sink_template =
@@ -41,13 +40,14 @@ GST_STATIC_PAD_TEMPLATE ("src",
 //I420_10BE
 #define parent_class gst_amsh264_dec_parent_class
 G_DEFINE_TYPE (GstAMSH264Dec, gst_amsh264_dec, GST_TYPE_AMS_DEC);
-GST_ELEMENT_REGISTER_DEFINE_CUSTOM (amsh264dec, amsh264_element_init);
+GST_ELEMENT_REGISTER_DEFINE_CUSTOM (amsh264dec, amsh264dec_element_init);
 
 static void
 gst_amsh264_dec_class_init (GstAMSH264DecClass * klass)
 {
   GstElementClass *element_class;
   GstAMSDecClass *ams_class;
+  GST_AMS_LOG("init");
 
   element_class = GST_ELEMENT_CLASS (klass);
   ams_class = GST_AMS_DEC_CLASS (klass);
@@ -70,6 +70,7 @@ static void
 gst_amsh264_dec_init (GstAMSH264Dec * self)
 {
   GST_DEBUG_OBJECT (self, "init");
+  GST_AMS_LOG("init");
   self->parser = NULL;
 }
 
@@ -116,7 +117,7 @@ static gboolean gst_amsh264_dec_close(GstAMSDec *dec) {
 static gint     gst_amsh264_dec_predecode(GstAMSDec *dec, guint8 *data, guint size) {
   GstAMSH264Dec *self =  GST_AMSH264_DEC(dec); 
   GstH264NalUnit  nalu;
-  GstH264SliceHdr header;
+  GstH264SliceHdr slice;
   GstH264ParserResult pres;
   GST_DEBUG_OBJECT (self, "predecode");
   pres = gst_h264_parser_identify_nalu (self->parser, data, 0, size, &nalu);
@@ -128,44 +129,60 @@ static gint     gst_amsh264_dec_predecode(GstAMSDec *dec, guint8 *data, guint si
   }
 
   switch (nalu.type) {
-    case GST_H264_NAL_SPS:
-         dec->header.size = 0;
-    case GST_H264_NAL_PPS:
-    case GST_H264_NAL_SEI:
+    case GST_H264_NAL_UNKNOWN:// = 0, no vcl
+         return 0x0F;
+    case GST_H264_NAL_SLICE:// = 1,
+    case GST_H264_NAL_SLICE_DPA:// = 2,
+    case GST_H264_NAL_SLICE_DPB:// = 3,
+    case GST_H264_NAL_SLICE_DPC:// = 4,
+        break;
+    case GST_H264_NAL_SLICE_IDR:// = 5,
+         return  0;
+    case GST_H264_NAL_SEI:// = 6,
          memcpy(dec->header.data + dec->header.size, data, size);
          dec->header.size += size;
          return -3;
-    break;
-    case GST_H264_NAL_AU_DELIMITER:
+    case GST_H264_NAL_SPS:// = 7,
+         dec->header.size = 0;
+    case GST_H264_NAL_PPS:// = 8,
+         memcpy(dec->header.data + dec->header.size, data, size);
+         dec->header.size += size;
+         return -3;
+    case GST_H264_NAL_AU_DELIMITER:// = 9,
          return -2;
-    break;
-    case GST_H264_NAL_SLICE_IDR:
-         return  0;
-    case GST_H264_NAL_SLICE:
-    case GST_H264_NAL_SLICE_DPA:
-    case GST_H264_NAL_SLICE_DPB:
-    case GST_H264_NAL_SLICE_DPC:
-    case GST_H264_NAL_SLICE_EXT:
-    /*
-         pres = gst_h264_parser_parse_slice_hdr (self->parser, &nalu,  &header, TRUE, TRUE);
-         if (GST_H264_IS_I_SLICE(&header)) {//             printf("(%s:%s:%d)\n", __FILE__,__FUNCTION__,__LINE__);
-             return 0;
-         }
-         break;*/
+    case GST_H264_NAL_SEQ_END:// = 10,
+    case GST_H264_NAL_STREAM_END:// = 11,
+    case GST_H264_NAL_FILLER_DATA:// = 12,
+    case GST_H264_NAL_SPS_EXT:// = 13,
+    case GST_H264_NAL_PREFIX_UNIT:// = 14,
+    case GST_H264_NAL_SUBSET_SPS:// = 15,
+    case GST_H264_NAL_DEPTH_SPS:// = 16,
+    case GST_H264_NAL_SLICE_AUX:// = 19,
+    case GST_H264_NAL_SLICE_EXT:// = 20,
+    case GST_H264_NAL_SLICE_DEPTH:// = 21
+         break;
     default:
         break;
   }
 
-  if (dec->skipframes == 0) {
-      if (nalu.idr_pic_flag == 0) {
-          return -4;
-      }
+  if (nalu.type >= 6) {// no vcl
+      return 0x0F;
   }
-  return 2;
+
+  pres = gst_h264_parser_parse_slice_hdr (self->parser, &nalu,  &slice, FALSE, FALSE);
+  if (GST_H264_IS_I_SLICE(&slice)) {
+     return 0;// I frame
+  }
+
+  if (dec->skipframes == 0) {
+     return -4;// lost no I frame
+  }
+
+  return 1;
 }
 
 static gboolean
-amsh264_element_init (GstPlugin * plugin)
+amsh264dec_element_init (GstPlugin * plugin)
 {
    GST_DEBUG_CATEGORY_INIT (gst_amsh264dec_debug, "amsh264dec", 0, "debug category for AMSCODEC H264 Decoder");
    return gst_element_register (plugin, "amsh264dec", GST_RANK_PRIMARY,  GST_TYPE_AMSH264_DEC);

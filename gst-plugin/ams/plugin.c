@@ -15,16 +15,14 @@ plugin_init (GstPlugin * plugin)
     GST_ERROR ("Failed to init ams codec library");
     return TRUE;
   }
-  
+
   ret |= GST_ELEMENT_REGISTER (amsh264dec, plugin);
 
-//  ret |= GST_ELEMENT_REGISTER (amsh264enc, plugin);
+  ret |= GST_ELEMENT_REGISTER (amsh264enc, plugin);
 
   ret |= GST_ELEMENT_REGISTER (amsh265dec, plugin);
 
-//  ret |= GST_ELEMENT_REGISTER (amsh265enc, plugin);
-
-   
+  ret |= GST_ELEMENT_REGISTER (amsh265enc, plugin);
 
   return ret;
 }

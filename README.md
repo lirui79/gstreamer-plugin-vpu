@@ -18,7 +18,7 @@ source /etc/bash.bashrc
 test before, please run cmd
 export GST_PLUGIN_PATH=$GST_PLUGIN_PATH:/home/stone/gstreamer-vpu/build/gst-plugin/ams/
 
-gst tool test:
+gst tool decode test:
 
 gst-launch-1.0 filesrc location=/home/stone/1080.h264 ! h264parse ! openh264dec ! filesink location=/home/stone/1.yuv
 
@@ -51,3 +51,10 @@ demo test:
 not save yuv file
    gst-launch-1.0 filesrc location=/home/stone/we_8bit_1920x1080.mp4 ! parsebin ! amsh264dec ! fakesink
    ./build/gst-app/ams/ams-app -b 0 -i /home/stone/1080.h264
+
+
+gst tool encode test:
+
+gst-launch-1.0 filesrc location=/home/stone/yuv/crowd_run_1920_1080p15.yuv blocksize=3110400 ! video/x-raw,format=I420, framerate=25/1,width=1920,height=1080 ! amsh264enc ! filesink location=out.264
+
+gst-launch-1.0 filesrc location=/home/stone/yuv/crowd_run_1920_1080p15.yuv blocksize=3110400 ! video/x-raw,format=I420, framerate=30/1,width=1920,height=1080 ! amsh264enc board-idx=0 profile=0 ! filesink location=out.h264

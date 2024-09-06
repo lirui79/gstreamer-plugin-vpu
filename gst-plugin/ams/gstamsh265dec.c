@@ -22,7 +22,7 @@ static gboolean gst_amsh265_dec_close(GstAMSDec *dec);
 
 static gint     gst_amsh265_dec_predecode(GstAMSDec *dec, guint8 *data, guint size);
 
-static gboolean amsh265_element_init (GstPlugin * plugin);
+static gboolean amsh265dec_element_init (GstPlugin * plugin);
 
 
 static GstStaticPadTemplate gst_amsh265_dec_sink_template =
@@ -41,13 +41,14 @@ GST_STATIC_PAD_TEMPLATE ("src",
 //I420_10BE
 #define parent_class gst_amsh265_dec_parent_class
 G_DEFINE_TYPE (GstAMSH265Dec, gst_amsh265_dec, GST_TYPE_AMS_DEC);
-GST_ELEMENT_REGISTER_DEFINE_CUSTOM (amsh265dec, amsh265_element_init);
+GST_ELEMENT_REGISTER_DEFINE_CUSTOM (amsh265dec, amsh265dec_element_init);
 
 static void
 gst_amsh265_dec_class_init (GstAMSH265DecClass * klass)
 {
   GstElementClass *element_class;
   GstAMSDecClass *ams_class;
+  GST_AMS_LOG("init");
 
   element_class = GST_ELEMENT_CLASS (klass);
   ams_class = GST_AMS_DEC_CLASS (klass);
@@ -70,6 +71,7 @@ static void
 gst_amsh265_dec_init (GstAMSH265Dec * self)
 {
   GST_DEBUG_OBJECT (self, "init");
+  GST_AMS_LOG("init");
   self->parser = NULL;
 }
 
@@ -116,6 +118,7 @@ static gboolean gst_amsh265_dec_close(GstAMSDec *dec) {
 static gint     gst_amsh265_dec_predecode(GstAMSDec *dec, guint8 *data, guint size) {
   GstAMSH265Dec *self =  GST_AMSH265_DEC(dec); 
   GstH265NalUnit nalu;
+//  GstH265SliceHdr slice;
   GstH265ParserResult pres;
   GST_DEBUG_OBJECT (self, "predecode");
   pres = gst_h265_parser_identify_nalu (self->parser, data, 0, size, &nalu);
@@ -127,52 +130,76 @@ static gint     gst_amsh265_dec_predecode(GstAMSDec *dec, guint8 *data, guint si
   }
 
   switch (nalu.type) {
-    case GST_H265_NAL_VPS:
+    case GST_H265_NAL_SLICE_TRAIL_N:// = 0,
+    case GST_H265_NAL_SLICE_TRAIL_R:// = 1,
+    case GST_H265_NAL_SLICE_TSA_N:// = 2,
+    case GST_H265_NAL_SLICE_TSA_R:// = 3,
+    case GST_H265_NAL_SLICE_STSA_N:// = 4,
+    case GST_H265_NAL_SLICE_STSA_R:// = 5,
+    case GST_H265_NAL_SLICE_RADL_N:// = 6,
+    case GST_H265_NAL_SLICE_RADL_R:// = 7,
+    case GST_H265_NAL_SLICE_RASL_N:// = 8,
+    case GST_H265_NAL_SLICE_RASL_R:// = 9,
+         break;
+    case GST_H265_NAL_SLICE_BLA_W_LP:// = 16,
+    case GST_H265_NAL_SLICE_BLA_W_RADL:// = 17,
+    case GST_H265_NAL_SLICE_BLA_N_LP:// = 18,
+    case GST_H265_NAL_SLICE_IDR_W_RADL:// = 19,
+    case GST_H265_NAL_SLICE_IDR_N_LP:// = 20,
+    case GST_H265_NAL_SLICE_CRA_NUT:// = 21,
+    case RESERVED_IRAP_NAL_TYPE_MIN:// = 22
+    case RESERVED_IRAP_NAL_TYPE_MAX:// =  23
+         return  0;// IDR I frame
+    case GST_H265_NAL_VPS:// = 32,
          dec->header.size = 0;
-    case GST_H265_NAL_SPS:
-    case GST_H265_NAL_PPS:
-    case GST_H265_NAL_PREFIX_SEI:
-    case GST_H265_NAL_SUFFIX_SEI:
+    case GST_H265_NAL_SPS:// = 33,
+    case GST_H265_NAL_PPS:// = 34,
          memcpy(dec->header.data + dec->header.size, data, size);
          dec->header.size += size;
          return -3;
-    case GST_H265_NAL_SLICE_TRAIL_N:
-    case GST_H265_NAL_SLICE_TRAIL_R:
-    case GST_H265_NAL_SLICE_TSA_N:
-    case GST_H265_NAL_SLICE_TSA_R:
-    case GST_H265_NAL_SLICE_STSA_N:
-    case GST_H265_NAL_SLICE_STSA_R:
-    case GST_H265_NAL_SLICE_RADL_N:
-    case GST_H265_NAL_SLICE_RADL_R:
-    case GST_H265_NAL_SLICE_RASL_N:
-    case GST_H265_NAL_SLICE_RASL_R:
-    case GST_H265_NAL_SLICE_BLA_W_LP:
-    case GST_H265_NAL_SLICE_BLA_W_RADL:
-    case GST_H265_NAL_SLICE_BLA_N_LP:
-    case GST_H265_NAL_SLICE_CRA_NUT:
-    case GST_H265_NAL_EOB:
-    case GST_H265_NAL_EOS:
-    case GST_H265_NAL_FD:
-         break;
-    case GST_H265_NAL_SLICE_IDR_W_RADL:
-    case GST_H265_NAL_SLICE_IDR_N_LP:
-         return  0;
-    case GST_H265_NAL_AUD:
+    case GST_H265_NAL_AUD:// = 35,
          return -2;      
+    case GST_H265_NAL_EOS:// = 36,
+    case GST_H265_NAL_EOB:// = 37,
+    case GST_H265_NAL_FD:// = 38,
+         break;
+    case GST_H265_NAL_PREFIX_SEI:// = 39,
+    case GST_H265_NAL_SUFFIX_SEI:// = 40
+         memcpy(dec->header.data + dec->header.size, data, size);
+         dec->header.size += size;
+         return -3;
     default:
          break;
   }
 
-  if (dec->skipframes == 0) {
-      if (!GST_H265_IS_NAL_TYPE_IDR(nalu.type)) {
-          return -4;
-      }
+  if (nalu.type >= 32) {// no vcl
+      return 0x0F;
   }
+
+/*
+  pres = gst_h265_parser_parse_slice_hdr (self->parser, &nalu, &slice);
+  if (GST_H265_IS_I_SLICE (&slice)) {
+      return 0;// I frame
+  }//*/
+
+  if (dec->skipframes == 0) {
+      return -4;// lost no I frames
+  }
+
+/*
+  if (GST_H265_IS_P_SLICE (&slice)) {
+      return 1;
+  }
+
+  if (GST_H265_IS_B_SLICE (&slice)) {
+      return 2;
+  }
+*/
   return 1;
 }
 
 static gboolean
-amsh265_element_init (GstPlugin * plugin)
+amsh265dec_element_init (GstPlugin * plugin)
 {
    GST_DEBUG_CATEGORY_INIT (gst_amsh265dec_debug, "amsh265dec", 0, "debug category for AMSCODEC H265 Decoder");
    return gst_element_register (plugin, "amsh265dec", GST_RANK_PRIMARY,  GST_TYPE_AMSH265_DEC);
