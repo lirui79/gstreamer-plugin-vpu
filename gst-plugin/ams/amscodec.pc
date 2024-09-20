@@ -1,0 +1,13 @@
+prefix=/usr
+
+exec_prefix=${prefix}
+libdir=${prefix}/lib/x86_64-linux-gnu
+includedir=${prefix}/include
+
+Name: amscodec
+Description: GStreamer AMSCODEC plugin.
+Version: 1.0.1
+Requires:
+Libs: -lams_codec -L${libdir}
+Libs.private: -lm  -lstdc++
+Cflags: -I${prefix}/include

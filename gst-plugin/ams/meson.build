@@ -1,7 +1,7 @@
 plugin_c_args = ['-DHAVE_CONFIG_H']
 
 cdata = configuration_data()
-cdata.set_quoted('PACKAGE_VERSION', gst_version)
+cdata.set_quoted('PACKAGE_VERSION', '1.0.1')
 cdata.set_quoted('PACKAGE', 'gst-amscodec-plugin')
 cdata.set_quoted('GST_LICENSE', 'LGPL')
 cdata.set_quoted('GST_API_VERSION', api_version)
