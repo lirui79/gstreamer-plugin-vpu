@@ -1,0 +1,89 @@
+
+
+ffmpeg 中添加一个decoder encoder
+ 在   configure  中 
+
+ 1.     External library support:  添加
+            --enable-libx265         enable HEVC encoding via x265 [no]
+		    --enable-libhiredis      enable hiredis [yes]
+		    --enable-lijson_c        enable json-c [yes]
+		    --enable-libams_codec    enable AMS VPU codec [no]
+
+
+ 2.    EXTERNAL_LIBRARY_LIST="    添加
+			openal
+			opengl
+			pocketsphinx
+			vapoursynth
+			libams_codec
+          
+
+
+  3.   HWACCEL_AUTODETECT_LIBRARY_LIST="    添加
+			nvenc
+			vaapi
+			vdpau
+			videotoolbox
+			v4l2_m2m
+			xvmc
+			htcvid
+			ams
+
+  4.  # external libraries
+			libx264rgb_encoder_deps="libx264 x264_csp_bgr"
+			libx264rgb_encoder_select="libx264_encoder"
+			libx265_encoder_deps="libx265"
+			h264_ams_encoder_deps="libams_codec"
+			libxavs_encoder_deps="libxavs"
+			libxavs2_encoder_deps="libxavs2"
+
+
+   5.  # these are off by default, so fail if requested and not available
+		enabled libx265           && require_pkg_config libx265 x265 x265.h x265_api_get &&
+									 require_cpp_condition libx265 x265.h "X265_BUILD >= 70"
+		enabled libhiredis        && require_pkg_config libhiredis hiredis hiredis.h redisConnect
+		enabled libjson_c         && require_pkg_config libjson_c json-c json_util.h json_object_object_add
+		enabled libams_codec      && check_pkg_config libams_codec ams_codec "ams_api_board.h ams_api_encode.h" ams_codec_dev_init ||
+									 { add_cflags -I../ams_include  &&
+									  add_ldflags -L../ams_include &&
+									  require libams_codec "ams_api_board.h ams_api_encode.h" ams_codec_dev_init "-lams_codec $pthreads_extralibs $libm_extralibs" &&
+									  warn "using libams_codec without pkg-config"; }
+
+   6. 在目录文件下分别对应不同功能组件，运行./configure  产生
+
+		filter demuxer/muxer    libavfilter/filter_list.c AVFilter filter_list $FILTER_LIST
+		codec  encoder/decoder  libavcodec/codec_list.c AVCodec codec_list $CODEC_LIST
+		parser                  libavcodec/parser_list.c AVCodecParser parser_list $PARSER_LIST
+		bitstream filter        libavcodec/bsf_list.c AVBitStreamFilter bitstream_filters $BSF_LIST
+		format demuxer          libavformat/demuxer_list.c AVInputFormat demuxer_list $DEMUXER_LIST
+		format muxer            libavformat/muxer_list.c AVOutputFormat muxer_list $MUXER_LIST
+		input  device           libavdevice/indev_list.c AVInputFormat indev_list $INDEV_LIST
+		output device           libavdevice/outdev_list.c AVOutputFormat outdev_list $OUTDEV_LIST
+		protocol                libavformat/protocol_list.c URLProtocol url_protocols $PROTOCOL_LIST
+
+
+    7. 编写decoder encoder 必须知道
+
+       struct AVCodec                           codec.h
+       struct AVCodecContext                    avcodec.h
+
+       ffmpeg6.0 
+         struct FFCodec  包含 struct AVCodec    codec_internal.h
+
+       在libavcodec/ 目录下建decoder、encoder 源码文件 例如 openh264编码解码 如下文件
+             libopenh264.c  libopenh264.h  libopenh264dec.c  libopenh264enc.c
+
+       allcodecs.c  中添加 例如
+			extern AVCodec ff_libopenh264_encoder;
+			extern AVCodec ff_libopenh264_decoder;
+
+      Makefile 中 添加
+			OBJS-$(CONFIG_LIBOPENH264_DECODER)        += libopenh264dec.o libopenh264.o
+			OBJS-$(CONFIG_LIBOPENH264_ENCODER)        += libopenh264enc.o libopenh264.o
+
+
+    8. 编译时主要configure选项，添加库 头文件和库文件路径
+
+
+     低版本 struct AVCodec  中有函数指针需要实现
+     高版本 struct FFCodec  中有函数结构中函数指针需要实现函数

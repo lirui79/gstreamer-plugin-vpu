@@ -1,0 +1,207 @@
+
+https://walterfan.github.io/gstreamer-cookbook/4.plugin/1.plugin-boilerplate.html#gst-template
+
+https://gstreamer.freedesktop.org/documentation/installing/on-linux.html?gi-language=c
+
+https://github.com/GStreamer/gstreamer/tree/main
+
+git clone https://github.com/GStreamer/gstreamer.git
+
+ pip3 install --user meson
+
+如找不到 meson https://blog.csdn.net/iprobobo/article/details/123306771
+
+在Linux上，可以使用包管理器安装，如：sudo apt-get install ninja-build 或 sudo yum install ninja-build   apt install flex bison
+meson setup build
+meson compile -C build
+
+
+meson setup --prefix=/home/stone/gstreamer/build/ build
+meson compile -C build
+meson install -C build
+
+meson --reconfigure --prefix=/home/stone/gstreamer/build/ build
+
+这两个命令须一起执行
+
+
+安装目录 /home/stone/workspace/install/
+
+meson setup --prefix=/home/stone/gstreamer/build/ build
+meson compile -C build
+meson install -C build
+
+
+编写插件
+
+https://gstreamer.freedesktop.org/documentation/plugin-development/basics/boiler.html?gi-language=c
+
+ git clone https://gitlab.freedesktop.org/gstreamer/gst-template.git
+
+ meson setup build
+
+如报错 则安装组件
+  apt install ninja-build
+
+编译插件和应用
+   ninja -C build
+
+
+gstreamer  框架  优先编写 h264解码
+
+环境   Linux 系统  h264 解码  gstreamer  1.20.3
+
+apt install ssh  vim gedit g++ gcc cmake tig git  curl flex bison nasm x264 x265
+ meson pkg-config openh264 de265
+ 
+apt install libgstreamer1.0-dev
+meson setup  build
+apt-cache search gstreamer
+apt install gstreamer1.0-plugins-base gstreamer1.0-plugins-good  gstreamer1.0-pulseaudio gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-adapter-pulseeffects  gstreamer1.0-autogain-pulseeffects gstreamer1.0-libav gstreamer1.0-plugins-bad
+apt-cache search gstreamer
+apt install libgstreamer-plugins-base1.0-dev
+apt-cache search gstreamer
+meson setup  build
+
+
+
+GStreamer 1.20.3   
+   git tag
+   git checkout 1.20.3
+
+   编译
+meson --prefix=/home/stone/gstreamer/build/ build
+meson setup --prefix=/home/stone/gstreamer/build/ build
+ninja -C build
+meson install -C build
+
+apt list --installed | grep gstreamer*
+apt-get purge [package]
+apt-get autoremove [package]
+
+
+
+GStreamer 1.20.3  
+git clone https://github.com/GStreamer/gstreamer.git
+git clone https://gitlab.freedesktop.org/gstreamer/gstreamer.git
+   git tag
+   git checkout 1.20.3
+meson setup --prefix=/usr build
+ninja -C build
+meson install -C build
+
+编写插件
+git clone https://gitlab.freedesktop.org/gstreamer/gst-template.git
+
+ meson setup build
+meson setup --prefix=/home/stone/gstreamer-vpu/build/ build
+   ninja -C build
+
+https://wenku.csdn.net/answer/e7f746cb494147b4b1825730e0dcbbd6   格式
+
+
+export GST_PLUGIN_PATH=$GST_PLUGIN_PATH:/home/stone/gstreamer-vpu/build/gst-plugin/ams/	 
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/stone/gstreamer-vpu/build/gst-plugin/ams/	 
+
+192.17.1.108  stone/1 ams/1  root/root
+
+/etc/bash.bashrc   末尾添加
+PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/SmarHTC_V6624/lib/pkgconfig/
+export PKG_CONFIG_PATH
+
+source /etc/bash.bashrc 
+pkg-config --list-all
+
+gst-launch-1.0 filesrc location=/home/stone/1080.h264 ! h264parse ! openh264dec ! filesink location=/home/stone/3.yuv
+gst-launch-1.0 filesrc location=/home/stone/1080.h264 ! h264parse ! amsh264dec ! filesink location=/home/stone/3.yuv
+gst-launch-1.0 filesrc location=/home/stone/1080.h264 ! parsebin ! amsh264dec ! filesink location=/home/stone/3.yuv
+gst-launch-1.0 filesrc location=/home/stone/gb_test_1080p.mp4 ! parsebin ! amsh264dec ! filesink location=/home/stone/4.yuv
+gst-launch-1.0 filesrc location=/home/stone/264_352x288_B10_IBPBP_F100.264 ! parsebin ! amsh264dec ! filesink location=/home/stone/6.yuv
+
+meson setup build
+ninja -C build
+
+
+pkg-config --list-all
+if no find libams_codec
+please   add  
+PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/SmarHTC_V6624/lib/pkgconfig/
+export PKG_CONFIG_PATH
+into /etc/bash.bashrc
+and 
+source /etc/bash.bashrc 
+
+or cp /usr/local/SmarHTC_V6624/lib/pkgconfig/libams_codec.pc  /usr/lib/pkgconfig/
+
+test before, please run cmd
+export GST_PLUGIN_PATH=$GST_PLUGIN_PATH:/home/stone/gstreamer-vpu/build/gst-plugin/ams/
+
+gst tool test:
+
+gst-launch-1.0 filesrc location=/home/stone/1080.h264 ! h264parse ! openh264dec ! filesink location=/home/stone/1.yuv
+
+gst-launch-1.0 filesrc location=/home/stone/1080.h264 ! h264parse ! amsh264dec ! filesink location=/home/stone/2.yuv
+gst-launch-1.0 filesrc location=/home/stone/1080.h264 ! parsebin ! amsh264dec ! filesink location=/home/stone/3.yuv
+gst-launch-1.0 filesrc location=/home/stone/we_8bit_1920x1080.mp4 ! parsebin ! amsh264dec ! filesink location=/home/stone/4.yuv
+gst-launch-1.0 filesrc location=/home/stone/264_352x288_B10_IBPBP_F100.264 ! parsebin ! amsh264dec ! filesink location=/home/stone/5.yuv
+
+GST_DEBUG=4 gst-launch-1.0 filesrc location=/home/stone/264_352x288_B10_IBPBP_F100.264 ! parsebin ! amsh264dec ! filesink location=/home/stone/6.yuv
+
+  KEYFRAME is IDR saved
+     gst-launch-1.0 filesrc location=/home/stone/1080.h264 ! parsebin ! amsh264dec skip-frames=0 ! filesink location=/home/stone/7.yuv
+  SKIP FRAME  is 20
+     gst-launch-1.0 filesrc location=/home/stone/1080.h264 ! parsebin ! amsh264dec skip-frames=20 ! filesink location=/home/stone/8.yuv
+
+demo test:
+   Help
+  ./build/gst-app/ams/ams-app -h
+
+  Enable log
+   GST_DEBUG=4 ./build/gst-app/ams/ams-app -b 0 -i /home/stone/1080.h264 -o /home/stone/1.yuv
+
+  KEYFRAME is IDR saved
+ ./build/gst-app/ams/ams-app -b 0 -i /home/stone//home/stone/264_352x288_B10_IBPBP_F100.264 -o /home/stone/2.yuv -k
+
+  SKIP FRAME  is 30
+ ./build/gst-app/ams/ams-app -b 0 -i /home/stone/we_8bit_1920x1080.mp4 -o /home/stone/3.yuv -s 30
+
+gst-launch-1.0 filesrc location=/home/stone/we_8bit_1920x1080.mp4 ! parsebin ! amsh264dec board-idx=1 ! fakesink
+
+
+GStreamer常用的命令搜集
+https://zhuanlan.zhihu.com/p/609522623
+gst-launch-1.0 filesrc location=/home/stone/yuv/crowd_run_1920_1080p15.yuv blocksize=3110400 ! video/x-raw,format=I420, framerate=25/1,width=1920,height=1080 ! amsh264enc ! filesink location=out.264
+
+gst-launch-1.0 filesrc location=/home/stone/yuv/crowd_run_1920_1080p15.yuv blocksize=3110400 ! video/x-raw,format=I420, framerate=30/1,width=1920,height=1080 ! amsh264enc board-idx=0 profile=0 ! filesink location=out.h264
+
+
+
+gst-inspect-1.0 amscodec
+gst-inspect-1.0 amsh264dec
+
+
+向日葵 598 261 694     zr3qb0
+347 079 901   2gsvnp    smart smartcore
+
+
+
+apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio
+ 2002  apt-get update   --fix-missing
+ 2003  apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-pulseaudio
+
+
+采用ubuntu 22.04 server版本
+升级测试机器是否卡死
+采用GStreamer   1.20.3 版本源码编译安装
+
+
+gst-launch-1.0 filesrc location=/home/stone/we_8bit_1920x1080.mp4 ! parsebin ! amsh264dec ! filesink location=/home/stone/4.yuv
+gst-launch-1.0 filesrc location=/home/stone/264_352x288_B10_IBPBP_F100.264 ! parsebin ! amsh264dec ! filesink location=/home/stone/5.yuv
+
+KEYFRAME is IDR saved
+     gst-launch-1.0 filesrc location=/home/stone/1080.h264 ! parsebin ! amsh264dec skip-frames=0 ! filesink location=/home/stone/7.yuv
+SKIP FRAME  is 20
+     gst-launch-1.0 filesrc location=/home/stone/1080.h264 ! parsebin ! amsh264dec skip-frames=20 ! filesink location=/home/stone/8.yuv
+
+采用boardid=1板卡测试性能即结果不保存文件
+gst-launch-1.0 filesrc location=/home/stone/we_8bit_1920x1080.mp4 ! parsebin ! amsh264dec board-idx=1 ! fakesink
